@@ -150,6 +150,11 @@ const List<String> mpvAnime4KShadersLite = [
   'Anime4K_Upscale_CNN_x2_S.glsl'
 ];
 
+// 自用：ArtCNN C4F16，写实向/3D 超分，用于「3D 国漫」档
+const List<String> mpvArtCNNShaders = [
+  'ArtCNN_C4F16.glsl',
+];
+
 /// 可选播放倍速
 const List<double> defaultPlaySpeedList = [
   0.25,
@@ -227,6 +232,7 @@ final Map<String, List<String>> defaultShortcuts = const {
   'speed3': ['3'],
   'speedup': ['X'],
   'speeddown': ['Z'],
+  'showstats': ['I'],
 };
 
 // 键位别名
@@ -257,6 +263,7 @@ final Map<String, String> shortcutsChineseName = {
   'toggledanmaku': '弹幕开关',
   'screenshot': '截图',
   'skip': '跳过',
+  'showstats': '播放统计',
   'speed1': '倍速：1x',
   'speed2': '倍速：2x',
   'speed3': '倍速：3x',

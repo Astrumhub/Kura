@@ -631,12 +631,30 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
         onSelected: widget.setPlaybackSpeed,
       );
 
-  List<Widget> get _superResolutionItems => _choiceItems(
-        SuperResolutionMode.values,
-        label: (value) => value.label,
-        selected: (value) =>
-            value == playerController.playback.superResolutionMode,
-        onSelected: widget.handleSuperResolutionChange,
+  List<Widget> get _superResolutionItems => [
+        for (final mode in SuperResolutionMode.values)
+          Tooltip(
+            message: mode.description,
+            waitDuration: const Duration(milliseconds: 700),
+            child: KazumiMenuItem(
+              onPressed: () => widget.handleSuperResolutionChange(mode),
+              label: mode.algorithm,
+              selected:
+                  mode == playerController.playback.superResolutionMode,
+            ),
+          ),
+      ];
+
+  List<Widget> _frameGenItems(bool enabled) => _choiceItems(
+        const [true, false],
+        label: (value) => value ? '开' : '关',
+        selected: (value) => value == enabled,
+        onSelected: (value) {
+          playerController.playback.setFrameGen(value);
+          KazumiDialog.showToast(
+            message: value ? '帧生成已开启' : '帧生成已关闭',
+          );
+        },
       );
 
   Widget _menuButton(
@@ -700,6 +718,16 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
           ] else
             const Spacer(),
         ],
+        ValueListenableBuilder<bool>(
+          valueListenable: playerController.playback.frameGenNotifier,
+          builder: (context, enabled, _) => _menuButton(
+            child: const Text(
+              '帧生成',
+              style: TextStyle(color: Colors.white),
+            ),
+            items: _frameGenItems(enabled),
+          ),
+        ),
         _menuButton(
           child: const Text('超分辨率', style: TextStyle(color: Colors.white)),
           items: _superResolutionItems,

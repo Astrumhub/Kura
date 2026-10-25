@@ -1,3 +1,21 @@
+> **⚠️ 这是个人定制分支（非官方版本）**
+>
+> 上游项目：[Predidit/Kazumi](https://github.com/Predidit/Kazumi)（GPL-3.0）
+>
+> 本分支在原版基础上增加了：
+>
+> - **AMD AMF 硬件插帧**（`amf_frc`，24 → 48 fps），播放器内一键开关，切换有气泡提示
+> - **按内容类型分类的超分预设**：`Anime4K Lite` / `Anime4K HQ` / `ArtCNN C4F16` / `EWA Lanczos`
+>   （真人档改用缩放器，避免 AI 锐化毁掉皮肤纹理）
+> - **播放统计浮层**（源/输出帧率、分辨率链路、色彩、解码、丢帧等），`I` 键开关
+> - **新增快捷键动作**：播放统计，可在「设置 → 键盘」中重新绑定
+>
+> 改动清单、构建方法、踩过的坑：见 [SELF-BUILD.md](./SELF-BUILD.md)
+>
+> 本分支为个人自用，不对外提供服务，不提供任何担保。插帧功能仅适用于 Windows + AMD 显卡。
+>
+> ---
+
 <div align=center>
 
 <h1>Kazumi</h1>

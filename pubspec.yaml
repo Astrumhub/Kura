@@ -166,3 +166,10 @@ flutter:
     - family: MI_Sans_Regular
       fonts:
         - asset: assets/fonts/MiSans-Regular.ttf
+
+# 自用补丁：使用本地修补过的 ech_http
+# 原因：上游 0.2.3 把 200KB CA 证书包塞进单个字符串字面量，超过 MSVC 16384 字节上限，
+# Windows 下编译必然 C2026 失败。补丁把它切成多块运行时拼接。
+dependency_overrides:
+  ech_http:
+    path: third_party/ech_http

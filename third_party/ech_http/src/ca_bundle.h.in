@@ -1,0 +1,23 @@
+#pragma once
+#include <string>
+
+// 自用补丁：原版把整个 CA 证书包塞进一个 raw string 字面量（约 200KB），
+// 超过 MSVC 单串 16384 字节上限，Windows 下必然 C2026 编译失败。
+// 改成切成多块独立字面量、运行时拼接。
+namespace eh_ca_detail {
+inline const char *const eh_ca_chunks[] = {
+@EH_CA_CHUNKS@
+};
+}  // namespace eh_ca_detail
+
+inline const std::string &eh_ca_bundle() {
+  static const std::string roots = [] {
+    std::string joined;
+    joined.reserve(210000);
+    for (const char *chunk : eh_ca_detail::eh_ca_chunks) {
+      joined += chunk;
+    }
+    return joined;
+  }();
+  return roots;
+}

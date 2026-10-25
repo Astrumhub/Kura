@@ -3,6 +3,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:kazumi/pages/player/controller/player_debug_controller.dart';
@@ -93,6 +95,11 @@ abstract class _PlayerPlaybackController with Store {
   /// 当前超分辨率模式
   @observable
   SuperResolutionMode superResolutionMode = SuperResolutionMode.off;
+
+  /// 帧生成（AMD amf_frc 硬件插帧）开关，仅 Windows 生效。
+  /// 用 ValueNotifier 让播放面板能即时刷新勾选状态（避免为此重跑 MobX 代码生成）。
+  bool frameGenEnabled = true;
+  final ValueNotifier<bool> frameGenNotifier = ValueNotifier<bool>(true);
 
   @observable
   double volume = -1;
@@ -332,6 +339,50 @@ abstract class _PlayerPlaybackController with Store {
       if (!isCurrentPlayer(player)) {
         return await _discardIfNotCurrent(candidate);
       }
+      // ==== 自用改动：Windows 下启用 AMD 硬件插帧（amf_frc，24 → 48） ====
+      // 前提：d3d11 解码 + 零拷贝。插帧失败只影响流畅度，不应影响播放本身。
+      // 不想要插帧时，把下面 if 里的内容注释掉重编即可。
+      if (Platform.isWindows) {
+        await pp.setProperty("hwdec", "d3d11va");
+        if (!isCurrentPlayer(player)) {
+          return await _discardIfNotCurrent(candidate);
+        }
+        await pp.setProperty("d3d11va-zero-copy", "yes");
+        if (!isCurrentPlayer(player)) {
+          return await _discardIfNotCurrent(candidate);
+        }
+        // 运行时加滤镜必须走 vf add 命令；setProperty("vf-append") 会被 mpv 静默忽略
+        if (frameGenEnabled) {
+          try {
+            await pp.command(["vf", "add", "amf_frc"]);
+            KazumiLogger().w('AMFFRC-PROBE vf add done');
+          } catch (e) {
+            KazumiLogger().w('AMFFRC-PROBE vf add failed: $e');
+          }
+        }
+        if (!isCurrentPlayer(player)) {
+          return await _discardIfNotCurrent(candidate);
+        }
+        // 诊断：确认参数落地 + 4 秒后回读实际输出帧率（写进 Kazumi 日志）
+        try {
+          final applied = await pp.getProperty("vf");
+          KazumiLogger().w('AMFFRC-PROBE applied vf=$applied');
+        } catch (e) {
+          KazumiLogger().w('AMFFRC-PROBE read vf failed: $e');
+        }
+        Future.delayed(const Duration(seconds: 4), () async {
+          try {
+            final vf = await pp.getProperty("estimated-vf-fps");
+            final cf = await pp.getProperty("container-fps");
+            final drops = await pp.getProperty("frame-drop-count");
+            KazumiLogger().w(
+              'AMFFRC-PROBE container=$cf vf=$vf drops=$drops',
+            );
+          } catch (e) {
+            KazumiLogger().w('AMFFRC-PROBE probe failed: $e');
+          }
+        });
+      }
       if (Platform.isAndroid) {
         await pp.setProperty("volume-max", "100");
         if (!isCurrentPlayer(player)) {
@@ -491,36 +542,82 @@ abstract class _PlayerPlaybackController with Store {
       if (!identical(mediaPlayer, currentPlayer)) {
         return;
       }
+      // 真人档：不加载 shader，只用高质量缩放器，保留纹理与颗粒
+      if (mode.kind == SuperResolutionKind.scaler) {
+        await pp.command(['change-list', 'glsl-shaders', 'clr', '']);
+        await pp.setProperty('scale', 'ewa_lanczossharp');
+        superResolutionMode = mode;
+        return;
+      }
+
+      List<String>? shaders;
       switch (mode) {
         case SuperResolutionMode.efficiency:
-          await pp.command([
-            'change-list',
-            'glsl-shaders',
-            'set',
-            buildShadersAbsolutePath(
-              shaderAssetService.shadersDirectory.path,
-              mpvAnime4KShadersLite,
-            ),
-          ]);
-          break;
+          shaders = mpvAnime4KShadersLite;
         case SuperResolutionMode.quality:
-          await pp.command([
-            'change-list',
-            'glsl-shaders',
-            'set',
-            buildShadersAbsolutePath(
-              shaderAssetService.shadersDirectory.path,
-              mpvAnime4KShaders,
-            ),
-          ]);
-          break;
+          shaders = mpvAnime4KShaders;
+        case SuperResolutionMode.cg3d:
+          shaders = mpvArtCNNShaders;
         case SuperResolutionMode.off:
-          await pp.command(['change-list', 'glsl-shaders', 'clr', '']);
-          break;
+        case SuperResolutionMode.liveAction:
+          shaders = null;
+      }
+      if (shaders == null) {
+        await pp.command(['change-list', 'glsl-shaders', 'clr', '']);
+      } else {
+        await pp.command([
+          'change-list',
+          'glsl-shaders',
+          'set',
+          buildShadersAbsolutePath(
+            shaderAssetService.shadersDirectory.path,
+            shaders,
+          ),
+        ]);
       }
       superResolutionMode = mode;
     } catch (e) {
       KazumiLogger().w('PlayerController: failed to set shader', error: e);
+    }
+  }
+
+  /// 运行时开关帧生成（AMD amf_frc）。mpv 里 setProperty("vf-append") 会被静默忽略，
+  /// 必须走 vf add / vf remove 命令。
+  Future<void> setFrameGen(bool enabled, {Player? player}) async {
+    final currentPlayer = player ?? mediaPlayer;
+    if (!Platform.isWindows) {
+      return;
+    }
+    if (currentPlayer == null) {
+      frameGenEnabled = enabled;
+      return;
+    }
+    try {
+      final pp = currentPlayer.platform as NativePlayer;
+      await pp.waitForPlayerInitialization;
+      if (!identical(mediaPlayer, currentPlayer)) {
+        return;
+      }
+      if (enabled) {
+        await pp.command(['vf', 'add', 'amf_frc']);
+      } else {
+        await pp.command(['vf', 'remove', 'amf_frc']);
+      }
+      frameGenEnabled = enabled;
+      frameGenNotifier.value = enabled;
+      KazumiLogger().w('FrameGen: ${enabled ? 'on' : 'off'}');
+      Future.delayed(const Duration(seconds: 2), () async {
+        try {
+          final vf = await pp.getProperty('estimated-vf-fps');
+          final cf = await pp.getProperty('container-fps');
+          final chain = await pp.getProperty('vf');
+          KazumiLogger().w(
+            'FrameGen: after switch container=$cf vf=$vf chain=$chain',
+          );
+        } catch (_) {}
+      });
+    } catch (e) {
+      KazumiLogger().w('FrameGen: failed to switch', error: e);
     }
   }
 

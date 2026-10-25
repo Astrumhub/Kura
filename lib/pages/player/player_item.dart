@@ -24,6 +24,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:kazumi/pages/player/video_details_sheet.dart';
+import 'package:kazumi/pages/player/player_stats_overlay.dart';
 import 'package:screen_brightness_platform_interface/screen_brightness_platform_interface.dart';
 import 'package:kazumi/pages/history/history_controller.dart';
 import 'package:kazumi/services/storage/storage.dart';
@@ -353,6 +354,8 @@ class _PlayerItemState extends State<PlayerItem>
     }
   }
 
+  bool _showStats = false;
+
   void _initKeyboardActions() {
     keyboardActions = {
       'playorpause': () => playerController.playOrPause(),
@@ -366,6 +369,7 @@ class _PlayerItemState extends State<PlayerItem>
       'fullscreen': () => handleShortcutFullscreen(),
       'screenshot': handleScreenshot,
       'skip': skipOP,
+      'showstats': () => setState(() => _showStats = !_showStats),
       'exitfullscreen': () => handleShortcutExitFullscreen(),
       'toggledanmaku': () => handleDanmaku(),
       'speed1': () => setPlaybackSpeed(1.0),
@@ -1426,6 +1430,16 @@ class _PlayerItemState extends State<PlayerItem>
                         playerController: playerController,
                       ),
                     ),
+                    if (_showStats)
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: SafeArea(
+                          child: PlayerStatsOverlay(
+                            controller: playerController,
+                          ),
+                        ),
+                      ),
                     (playerController.playback.isBuffering ||
                             videoPageController.loading)
                         ? const Positioned.fill(
