@@ -1,6 +1,6 @@
 <div align="center">
 
-# Kazumi · 个人优化版
+# Kazumi · 调校版
 
 <sub><b>基于 <a href="https://github.com/Predidit/Kazumi">Predidit/Kazumi</a> 的个人使用习惯优化分支</b></sub>
 
