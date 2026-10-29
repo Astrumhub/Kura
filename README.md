@@ -2,82 +2,110 @@
 
 # Kazumi · 调校版
 
-<sub><b>基于 <a href="https://github.com/Predidit/Kazumi">Predidit/Kazumi</a> 的个人维护分支</b></sub>
+<sub><b>基于 <a href="https://github.com/Predidit/Kazumi">Predidit/Kazumi</a> 的分支</b></sub>
 
-<sub>非官方版本 · 与上游作者无关 · 遵循 GPL-3.0</sub>
+<sub>非官方版本 · 与上游作者无关 · GPL-3.0</sub>
 
-<sub>Windows · 播放增强 · 影视扩展</sub>
+<img src="docs/screenshots/movie-wall.jpg" width="860">
+
+<sub>影视板块 · 电影海报墙</sub>
 
 </div>
 
 ---
 
-我很喜欢 Kazumi 这个项目。用久了以后，有些地方按我的习惯不太顺手，于是按自己的方式改了一版。
+本分支在官方 Kazumi 基础上扩展了两块：**影视内容支持**和**播放画面增强**。下面写的都是实际在用的功能，以及与官方的具体差别。
 
-出发点只有一个：**自己用着舒服**。不堆功能，不替代官方，也不去和原版比高低。所有改动都源自日常使用中真实遇到的不顺手。
+## 和官方的差别
 
-如果你也在用「网盘挂载 + 本地资源库」的方式看片，这套改动会更对味。
+| 方面 | 官方 Kazumi | 本分支 |
+| :--- | :--- | :--- |
+| 内容类型 | 只有番剧（Bangumi） | 番剧 + **电影 / 剧集**（TMDB） |
+| 影视详情 | 无 | 海报墙、评分、简介、标签、**演职员**、**关联作品** |
+| 搜索 | 只搜番剧 | **一个框搜三种**，分区展示 |
+| 影视播放 | 无 | 接规则（源）体系，选源后进内置播放器 |
+| 影视记录 | 无 | 独立观看记录，不混进番剧历史 |
+| 超分 | Anime4K 两档 | 四档：Anime4K Lite / Anime4K HQ / ArtCNN C4F16 / EWA Lanczos |
+| 插帧 | 无 | **AMD 硬件插帧**（AMF），播放器内开关，状态记忆 |
+| 运行数据 | 无 | 播放统计浮层：帧率链路、分辨率、色彩、解码、丢帧 |
 
-## 这一版多了什么
+## 影视板块
 
-### 影视板块（原版只有番剧）
+列表分「电影」「剧集」两个子页，热门 / 高分可切换，支持搜索与滚动分页。数据全部来自 TMDB，中文标题与简介。
 
-原版的数据源是 Bangumi，只有番剧。这一版把**电影和剧集**也接了进来，用 TMDB 做元数据：
+<img src="docs/screenshots/category-menu.jpg" width="780">
 
-| 能力 | 说明 |
-| :--- | :--- |
-| 海报墙 | 电影 / 剧集各自独立，热门 / 高分切换，支持搜索与分页 |
-| 详情页 | 海报、年份、评分、简介、标签，结构与番剧详情页一致 |
-| 演职员 | 角色（含饰演角色）与制作人员（导演、编剧等） |
-| 关联 | TMDB 推荐作品，可继续点进去浏览 |
-| 播放 | 接入 Kazumi 的规则（源）体系，选中来源后进入内置播放器 |
+详情页结构与番剧详情页一致：模糊背景、信息卡、Tab 分页。Tab 包含概览、剧集（剧集类才有）、吐槽、角色、关联、制作人员。
 
-影视条目与番剧**完全隔离**：用独立的历史记录与存储，不会污染番剧的收藏与进度，也不会同步到其他设备。
+<img src="docs/screenshots/detail-related.jpg" width="860">
 
-### 统一搜索
+- **演职员**：角色（含饰演角色头像）与制作人员（导演、编剧、摄影等）
+- **关联**：TMDB 推荐作品，可继续点进去
+- **标签**：类型 + TMDB 关键词合并，超出折叠
+- **播放**：点「开始观看」调用已导入的规则搜索片名，选定来源后进入内置播放器
+- **记录**：看过的影视单独存一份，详情页显示「上次看到 第 N 集 · 时间」
 
-一个搜索框同时查三个源：
+影视条目用负数 id 与番剧隔离，不污染番剧的收藏、进度和跨端同步。
+
+## 统一搜索
+
+一个输入框，三个数据源并行：
 
 ```
-输入关键词
-├── 番剧   → Bangumi
-├── 电影   → TMDB
-└── 剧集   → TMDB
+关键词
+├── 番剧  → Bangumi
+├── 电影  → TMDB
+└── 剧集  → TMDB
 ```
 
-结果分区展示，卡片样式与番剧搜索结果完全一致（圆角、封面比例、标题、星级、年份都对齐同一套规格）。
+结果分三区展示，卡片规格与番剧搜索结果一致（圆角、封面比例、标题行高、星级与年份）。
 
-### 画面增强
+## 播放增强
 
-| 能力 | 说明 |
-| :--- | :--- |
-| **AMD 硬件插帧** | 24 → 48 fps，播放器内一键开关，切换有气泡提示，状态会记住 |
-| **分类超分预设** | Anime4K Lite / Anime4K HQ / ArtCNN / EWA Lanczos，按内容类型选择 |
-| **播放统计浮层** | 源帧率与输出帧率、分辨率链路、色彩、解码、丢帧，按 `I` 查看 |
-| 快捷键 | 插帧与统计浮层均可绑定，默认 `I` 打开统计 |
+### 帧生成（AMD 硬件插帧）
 
-插帧只依赖 **AMD 显卡的 AMF 单元**，走 D3D11 渲染管线，所以**仅 Windows + AMD 可用**；其他平台会自动跳过，不会报错。
+走 AMD 显卡的 AMF 单元，播放器内一键开关，切换有气泡提示，状态写入设置、重启保持。
+
+<img src="docs/screenshots/player-framegen.jpg" width="780">
+
+### 超分四档
+
+按内容类型选算法，切换时有提示：
+
+| 档位 | 算法 | 适合 |
+| :--- | :--- | :--- |
+| Anime4K Lite | Restore_CNN_M + Upscale_CNN_x2_M | 2D 动画，开销低 |
+| Anime4K HQ | Restore_CNN_VL + Upscale_CNN_x2_VL | 2D 动画，画质优先 |
+| ArtCNN C4F16 | 通用卷积超分 | 3D 国漫、写实向 |
+| EWA Lanczos | 不加载 shader，只做高质量缩放 | 真人电影、纪录片 |
+
+### 播放统计浮层
+
+按 `I` 打开，显示源帧率与输出帧率、分辨率链路、色彩矩阵与范围、解码方式、渲染器、丢帧数。数值取自播放器实时上报。
+
+<img src="docs/screenshots/player-stats-sr.jpg" width="780">
+
+插帧依赖 Windows 的 D3D11 渲染管线与 AMD 显卡，其他平台自动跳过；超分与统计浮层不受平台限制。
 
 ## 使用前提
 
 | 项目 | 要求 |
 | :--- | :--- |
-| 系统 | Windows（插帧依赖 D3D11；其余功能跨平台） |
-| 显卡 | **AMD**。NVIDIA / Intel 未验证，插帧不在支持范围 |
-| 网络 | 番剧搜索走 `api.bgm.tv`，影视元数据走 TMDB，**国内需要代理** |
-| 弹幕 | 需要自行申请弹弹play 开发者应用（见下） |
-| 影视 | 需要 TMDB API Key（免费申请） |
+| 系统 | Windows（插帧需要 D3D11，其余功能跨平台） |
+| 显卡 | 插帧目前仅支持 **AMD**；NVIDIA 方案在计划中 |
+| 网络 | `api.bgm.tv` 与 TMDB 接口在国内需要代理 |
+| 凭证 | 弹弹play（弹幕）与 TMDB（影视）都需要自行申请 |
 
-## 关于凭证
+## 凭证
 
-弹弹play 与 TMDB 都需要 API 凭证。本仓库**不包含任何密钥**，编译时通过 `--dart-define-from-file` 注入：
+仓库里没有任何密钥，编译时注入：
 
 ```json
-// local/credentials.json（已在 .gitignore 中）
+// local/credentials.json（.gitignore 已覆盖）
 {
-  "DANDANAPI_APPID": "你的弹弹play AppId",
-  "DANDANAPI_KEY": "你的弹弹play AppSecret",
-  "TMDB_API_KEY": "你的 TMDB API Key 或 Read Access Token"
+  "DANDANAPI_APPID": "弹弹play AppId",
+  "DANDANAPI_KEY": "弹弹play AppSecret",
+  "TMDB_API_KEY": "TMDB API Key 或 Read Access Token"
 }
 ```
 
@@ -85,24 +113,22 @@
 flutter build windows --release --dart-define-from-file=local/credentials.json
 ```
 
-没有凭证也能编译，只是弹幕与影视功能不可用。
+没有凭证也能编译，只是弹幕和影视不可用。
 
 ## 编译
 
-工具链、踩过的坑（`ech_http` 的 MSVC 编译问题等）、回滚方式，都写在 [SELF-BUILD.md](./SELF-BUILD.md) 里。
+工具链、`ech_http` 在 MSVC 下的编译问题、回滚方式，见 [SELF-BUILD.md](./SELF-BUILD.md)。一键构建用 `build.ps1`。
 
-一键构建脚本：`build.ps1`（自动注入 `local/credentials.json`、编译、部署到指定目录）。
+## 接下来的计划
 
-## 更新说明
-
-- 会一直维护，但**跟随上游节奏**：官方没有大更新（新功能、界面重设）时，这边一般不出新版。
-- 更新检查指向本仓库的 Release，不是官方仓库。
-- 后续计划：更多超分与插帧方案；若条件允许，提供 **Android（apk）** 与 **iPad（ipa）** 构建。
-- 移动端的插帧无法实现（硬件与系统限制），届时会以「轻量超分 + 帧混合」作为替代。
+- **NVIDIA 的插帧方案**：目前只走 AMD AMF，后续评估 N 卡可用的实现
+- **更多超分方案**：ArtCNN 其他强度、RAVU 等
+- **移动端**：apk 优先；ipa 需要 macOS 环境编译。移动端无法做硬件插帧，计划以轻量超分 + 帧混合替代
+- **细节打磨**：影视收藏、来源面板检索词优化、统计浮层数值继续贴近实测
 
 ## 致谢
 
-上游项目：[**Predidit/Kazumi**](https://github.com/Predidit/Kazumi)，遵循 GPL-3.0。
+上游项目 [**Predidit/Kazumi**](https://github.com/Predidit/Kazumi)（GPL-3.0）。
 
 播放能力来自 mpv / libmpv 与 media_kit；影视元数据来自 [TMDB](https://www.themoviedb.org/)；弹幕来自 [弹弹play](https://www.dandanplay.com/)。
 
