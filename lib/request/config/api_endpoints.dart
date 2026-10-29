@@ -29,7 +29,7 @@ class ApiEndpoints {
 
   /// 在线升级（指向自维护仓库，不再跟随官方）
   static const String latestApp =
-      'https://api.github.com/repos/Astrumhub/kazumi-tuned/releases/latest';
+      'https://api.github.com/repos/Astrumhub/kura/releases/latest';
 
   /// Bangumi 镜像测试后端
   static const String bangumiMirrorDomain = 'https://api.kazumi.fyi';
