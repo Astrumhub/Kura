@@ -13,6 +13,7 @@ import 'package:kazumi/bean/widget/loading_indicator.dart';
 import 'package:kazumi/bean/widget/empty_state_widget.dart';
 import 'package:kazumi/bean/widget/state_presentation.dart';
 import 'package:kazumi/modules/bangumi/bangumi_item.dart';
+import 'package:kazumi/pages/media/media_search_sliver.dart';
 import 'package:kazumi/pages/search/search_controller.dart';
 import 'package:kazumi/services/storage/storage.dart';
 import 'package:kazumi/utils/constants.dart';
@@ -341,6 +342,9 @@ class _SearchPageState extends State<SearchPage> {
           width: width,
           showRating: GStorage.getSetting(SettingsKeys.showRating),
         ),
+      // 影视结果：与番剧共用同一个关键词，单独分区展示。
+      if ((_submittedQuery ?? '').trim().isNotEmpty)
+        MediaSearchSliver(keyword: _submittedQuery!),
       if (allItems.isNotEmpty || !failed)
         SliverToBoxAdapter(
             child: Padding(

@@ -129,8 +129,11 @@ class AutoUpdater {
     try {
       final data = await _latestRelease();
 
+      // 自维护仓库暂时没有发布版本时，GitHub 会返回 404，
+      // 这属于「没有新版本」而不是错误，直接按已是最新处理。
       if (!data.containsKey('tag_name')) {
-        throw Exception('无效的响应数据');
+        KazumiLogger().i('Update: 仓库尚未发布版本，视为已是最新');
+        return null;
       }
 
       final remoteVersion = data['tag_name'] as String;
@@ -159,12 +162,18 @@ class AutoUpdater {
   }
 
   Future<Map<String, dynamic>> _latestRelease() async {
-    final raw = await _downloadClient.getPlain(ApiEndpoints.latestAppMirror);
-    final data = json.decode(raw);
-    if (data is! Map) {
-      throw Exception('Invalid update response');
+    try {
+      final raw = await _downloadClient.getPlain(ApiEndpoints.latestAppMirror);
+      final data = json.decode(raw);
+      if (data is! Map) {
+        return <String, dynamic>{};
+      }
+      return Map<String, dynamic>.from(data);
+    } catch (e) {
+      // 404 = 没有发布版本；网络异常也按「无更新」处理，避免每次启动都弹错误。
+      KazumiLogger().w('Update: 获取版本信息失败（按无更新处理）', error: e);
+      return <String, dynamic>{};
     }
-    return Map<String, dynamic>.from(data);
   }
 
   Future<void> autoCheckForUpdates() async {

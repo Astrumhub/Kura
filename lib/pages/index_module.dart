@@ -6,6 +6,7 @@ import 'package:kazumi/pages/collect/collect_module.dart';
 import 'package:kazumi/pages/index_page.dart';
 import 'package:kazumi/pages/info/info_module.dart';
 import 'package:kazumi/pages/init_page.dart';
+import 'package:kazumi/pages/media/media_module.dart';
 import 'package:kazumi/pages/my/my_module.dart';
 import 'package:kazumi/pages/onboarding/onboarding_page.dart';
 import 'package:kazumi/pages/popular/popular_controller.dart';
@@ -118,6 +119,7 @@ final indexModule = createModule(
         transition: _imagePreviewTransition,
       )
       ..module(infoModule)
+      ..module(mediaModule)
       ..module(settingsModule)
       ..module(searchModule);
   },

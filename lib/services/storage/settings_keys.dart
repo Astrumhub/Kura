@@ -498,6 +498,12 @@ class SettingsKeys {
     true,
     group: SettingGroup.download,
   );
+  /// 帧生成（AMD 硬件插帧）开关，仅 Windows 生效。
+  static const frameGenEnabled = SettingKey<bool>(
+    _SettingBoxKey.frameGenEnabled,
+    true,
+    group: SettingGroup.player,
+  );
   static const downloadDirectory = SettingKey<String>(
     _SettingBoxKey.downloadDirectory,
     '',
@@ -667,6 +673,7 @@ class SettingsKeys {
     downloadParallelEpisodes,
     downloadParallelSegments,
     downloadDanmaku,
+    frameGenEnabled,
     downloadDirectory,
     downloadDirectoryBookmark,
     shortcutDialogShown,
@@ -776,6 +783,7 @@ class _SettingBoxKey {
       downloadParallelEpisodes = 'downloadParallelEpisodes',
       downloadParallelSegments = 'downloadParallelSegments',
       downloadDanmaku = 'downloadDanmaku',
+    frameGenEnabled = 'frameGenEnabled',
       downloadDirectory = 'downloadDirectory',
       shortcutDialogShown = 'shortcutDialogShown',
       bangumiSyncEnable = 'bangumiSyncEnable',

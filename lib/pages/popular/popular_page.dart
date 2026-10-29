@@ -12,6 +12,8 @@ import 'package:window_manager/window_manager.dart';
 import 'package:kazumi/services/logging/logger.dart';
 import 'package:kazumi/services/platform/desktop_window_config.dart';
 import 'package:kazumi/bean/appbar/drag_to_move_bar.dart' as dtb;
+import 'package:kazumi/modules/media/media_item.dart';
+import 'package:kazumi/pages/media/media_grid.dart';
 import 'package:kazumi/utils/device.dart';
 
 class PopularPage extends StatefulWidget {
@@ -30,6 +32,13 @@ class _PopularPageState extends State<PopularPage> {
   late final ScrollController scrollController;
   PopularController get popularController => widget.controller;
 
+  /// 当前浏览的内容类型。null 表示番剧（沿用原有逻辑）。
+  MediaKind? _mediaKind;
+  MediaSort _mediaSort = MediaSort.popular;
+  MediaGridController? _gridController;
+  final TextEditingController _mediaSearchController = TextEditingController();
+  final ScrollController _mediaScrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +49,7 @@ class _PopularPageState extends State<PopularPage> {
     if (popularController.trendList.isEmpty) {
       popularController.queryBangumiByTrend();
     }
+    mediaSearchBus.addListener(_onMediaSearchRequest);
   }
 
   @override
@@ -47,6 +57,15 @@ class _PopularPageState extends State<PopularPage> {
     scrollController.removeListener(scrollListener);
     scrollController.dispose();
     super.dispose();
+  }
+
+  void _onMediaSearchRequest() {
+    final kind = mediaSearchBus.kind;
+    final keyword = mediaSearchBus.keyword;
+    if (kind == null || keyword == null || keyword.isEmpty) return;
+    _openMedia(kind, MediaSort.popular);
+    _gridController?.search(keyword);
+    _mediaSearchController.text = keyword;
   }
 
   void scrollListener() {
@@ -66,6 +85,87 @@ class _PopularPageState extends State<PopularPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 影视模式：与番剧同一套 SliverAppBar（标题折叠/拉伸一致），列表是 sliver。
+    if (_mediaKind != null) {
+      final controller = _gridController!;
+      // 影视模式：与番剧完全同一套 SliverAppBar 参数（actions/背景/拖动区/FAB）。
+      return Scaffold(
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => _mediaScrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOut,
+          ),
+          child: const Icon(Icons.arrow_upward),
+        ),
+        body: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification.metrics.pixels >=
+                notification.metrics.maxScrollExtent - 600) {
+              controller.loadMore();
+            }
+            return false;
+          },
+          child: CustomScrollView(
+            controller: _mediaScrollController,
+            slivers: [
+              SliverAppBar(
+                pinned: true,
+                stretch: true,
+                expandedHeight: 120,
+                elevation: 0,
+                titleSpacing: 0,
+                centerTitle: false,
+                backgroundColor: Theme.of(context).colorScheme.surface,
+                title: null,
+                actions: _mediaActions(),
+                flexibleSpace: SafeArea(
+                  child: dtb.DragToMoveArea(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final double maxExtent =
+                            120 - MediaQuery.of(context).padding.top;
+                        final t = (1 -
+                                ((constraints.maxHeight - kToolbarHeight) /
+                                        (maxExtent - kToolbarHeight))
+                                    .clamp(0.0, 1.0));
+                        final fontWeight =
+                            t < 0.5 ? FontWeight.w700 : FontWeight.w500;
+                        final fontSize = lerpDouble(28, 20, t)!;
+                        return Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                                left: 16, top: 8, bottom: 8, right: 60),
+                            child: SizedBox(
+                              height: 44,
+                              child: _buildTitleMenu(
+                                fontSize: fontSize,
+                                fontWeight: fontWeight,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              MediaGridHeaderSliver(
+                controller: controller,
+                searchController: _mediaSearchController,
+              ),
+              if (controller.loading && controller.items.isNotEmpty)
+                const SliverToBoxAdapter(
+                  child: LinearProgressIndicator(minHeight: 4),
+                ),
+              MediaGridSliver(controller: controller),
+              const SliverToBoxAdapter(child: SizedBox(height: 80)),
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       body: CustomScrollView(
         controller: scrollController,
@@ -123,6 +223,111 @@ class _PopularPageState extends State<PopularPage> {
     );
   }
 
+  /// 顶部标题即内容/分类选择器：番剧、电影、剧集各带自己的分类。
+  Widget _buildTitleMenu({
+    required double fontSize,
+    required FontWeight fontWeight,
+  }) {
+    final theme = Theme.of(context);
+    final bool isAnime = _mediaKind == null;
+    final String title = isAnime
+        ? (popularController.currentTag == ''
+            ? '热门番组'
+            : popularController.currentTag)
+        : '${_mediaKind!.label} · ${_mediaSort == MediaSort.popular ? '热门' : '高分'}';
+
+    List<Widget> mediaItems(MediaKind kind) => [
+          KazumiMenuItem(
+            label: '热门',
+            selected:
+                _mediaKind == kind && _mediaSort == MediaSort.popular,
+            onPressed: () => _openMedia(kind, MediaSort.popular),
+          ),
+          KazumiMenuItem(
+            label: '高分',
+            selected:
+                _mediaKind == kind && _mediaSort == MediaSort.topRated,
+            onPressed: () => _openMedia(kind, MediaSort.topRated),
+          ),
+        ];
+
+    return KazumiMenuButton(
+      animated: true,
+      style: const MenuStyle(
+        maximumSize: WidgetStatePropertyAll(Size(240, 400)),
+      ),
+      menuChildren: [
+        SubmenuButton(
+          menuChildren: [
+            for (final tag in ['', ...defaultAnimeTags])
+              KazumiMenuItem(
+                label: tag.isEmpty ? '热门番组' : tag,
+                selected: isAnime && tag == popularController.currentTag,
+                onPressed: () => _selectTag(tag),
+              ),
+          ],
+          child: const Text('番剧'),
+        ),
+        SubmenuButton(
+          menuChildren: mediaItems(MediaKind.movie),
+          child: const Text('电影'),
+        ),
+        SubmenuButton(
+          menuChildren: mediaItems(MediaKind.tv),
+          child: const Text('剧集'),
+        ),
+      ],
+      builder: (context, toggle) => InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: toggle,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.headlineMedium!.copyWith(
+                  fontWeight: fontWeight,
+                  fontSize: fontSize,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.keyboard_arrow_down,
+                size: fontSize, color: theme.iconTheme.color),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _mediaActions() => <Widget>[
+        IconButton(
+          tooltip: '历史记录',
+          onPressed: () => context.pushNamed('/settings/history/'),
+          icon: const Icon(Icons.history),
+        ),
+        if (isDesktop() && !DesktopWindowConfig.showWindowButton)
+          IconButton(
+            tooltip: '退出',
+            onPressed: () => windowManager.close(),
+            icon: const Icon(Icons.close),
+          ),
+      ];
+
+  void _openMedia(MediaKind kind, MediaSort sort) {
+    _gridController?.dispose();
+    final controller = MediaGridController(kind: kind)..sort = sort;
+    controller.reload();
+    setState(() {
+      _mediaKind = kind;
+      _mediaSort = sort;
+      _gridController = controller;
+      _mediaSearchController.clear();
+    });
+  }
+
   Widget contentGrid(List<BangumiItem> bangumiList) {
     int crossCount = 3;
     if (MediaQuery.sizeOf(context).width > LayoutBreakpoint.compact['width']!) {
@@ -158,7 +363,6 @@ class _PopularPageState extends State<PopularPage> {
   }
 
   Widget buildSliverAppBar() {
-    final theme = Theme.of(context);
     return SliverAppBar(
       pinned: true,
       stretch: true,
@@ -189,42 +393,10 @@ class _PopularPageState extends State<PopularPage> {
                   child: SizedBox(
                     height: 44,
                     child: Observer(
-                      builder: (_) {
-                        final bool isTrend = popularController.currentTag == '';
-                        return KazumiMenuButton(
-                          animated: true,
-                          style: const MenuStyle(
-                            maximumSize: WidgetStatePropertyAll(Size(240, 350)),
-                          ),
-                          menuChildren: [
-                            for (final tag in ['', ...defaultAnimeTags])
-                              KazumiMenuItem(
-                                label: tag.isEmpty ? '热门番组' : tag,
-                                selected: tag == popularController.currentTag,
-                                onPressed: () => _selectTag(tag),
-                              ),
-                          ],
-                          builder: (context, toggle) => InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: toggle,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  isTrend ? '热门番组' : popularController.currentTag,
-                                  style: theme.textTheme.headlineMedium!.copyWith(
-                                    fontWeight: fontWeight,
-                                    fontSize: fontSize,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(Icons.keyboard_arrow_down,
-                                    size: fontSize, color: theme.iconTheme.color),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                      builder: (_) => _buildTitleMenu(
+                        fontSize: fontSize,
+                        fontWeight: fontWeight,
+                      ),
                     ),
                   ),
                 ),
@@ -259,6 +431,10 @@ class _PopularPageState extends State<PopularPage> {
   }
 
   Future<void> _selectTag(String selected) async {
+    // 从影视切回番剧时，先退出影视模式。
+    if (_mediaKind != null) {
+      setState(() => _mediaKind = null);
+    }
     if (!mounted || selected == popularController.currentTag) return;
     scrollController.animateTo(0,
         duration: const Duration(milliseconds: 250), curve: Curves.easeOut);

@@ -49,6 +49,19 @@ class DioFactory {
     defaultHeaders: {'user-agent': getRandomUA()},
   );
 
+  /// TMDB 元数据（影视板块）。走与其它接口相同的网络配置，因此代理设置自动复用。
+  static Dio? _tmdbDio;
+  static Dio get tmdbDio => _tmdbDio ??= _create(
+    NetworkConfig.fromSettings(
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 20),
+    ),
+    defaultHeaders: {
+      'user-agent': getRandomUA(),
+      'accept': 'application/json',
+    },
+  );
+
   static Dio createForConfig(NetworkConfig config) {
     return _create(config);
   }
@@ -60,11 +73,13 @@ class DioFactory {
     _rulesRepoDio?.close();
     _pluginDio?.close();
     _downloadDio?.close();
+    _tmdbDio?.close();
     _apiDio = null;
     _bangumiDio = null;
     _rulesRepoDio = null;
     _pluginDio = null;
     _downloadDio = null;
+    _tmdbDio = null;
   }
 
   static Dio _create(

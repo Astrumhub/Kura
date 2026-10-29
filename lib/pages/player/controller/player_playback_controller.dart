@@ -352,6 +352,9 @@ abstract class _PlayerPlaybackController with Store {
           return await _discardIfNotCurrent(candidate);
         }
         // 运行时加滤镜必须走 vf add 命令；setProperty("vf-append") 会被 mpv 静默忽略
+        // 恢复上次的开关状态（默认开启）
+        frameGenEnabled = GStorage.getSetting(SettingsKeys.frameGenEnabled);
+        frameGenNotifier.value = frameGenEnabled;
         if (frameGenEnabled) {
           try {
             await pp.command(["vf", "add", "amf_frc"]);
@@ -605,6 +608,7 @@ abstract class _PlayerPlaybackController with Store {
       }
       frameGenEnabled = enabled;
       frameGenNotifier.value = enabled;
+      await GStorage.putSetting(SettingsKeys.frameGenEnabled, enabled);
       KazumiLogger().w('FrameGen: ${enabled ? 'on' : 'off'}');
       Future.delayed(const Duration(seconds: 2), () async {
         try {

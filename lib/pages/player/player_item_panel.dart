@@ -637,7 +637,10 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
             message: mode.description,
             waitDuration: const Duration(milliseconds: 700),
             child: KazumiMenuItem(
-              onPressed: () => widget.handleSuperResolutionChange(mode),
+              onPressed: () {
+                widget.handleSuperResolutionChange(mode);
+                KazumiDialog.showToast(message: '超分已切换：${mode.label}');
+              },
               label: mode.algorithm,
               selected:
                   mode == playerController.playback.superResolutionMode,

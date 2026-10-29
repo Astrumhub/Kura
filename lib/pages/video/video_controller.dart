@@ -562,7 +562,11 @@ abstract class _VideoPageController with Store implements Disposable {
         } else {
           playerController.danmaku.applyUnavailableDanmakuLoad(result);
           if (result.isFailed) {
-            KazumiDialog.showToast(message: '弹幕加载失败，可手动检索');
+            KazumiDialog.showToast(
+              message: params.bangumiId < 0
+                  ? '该内容暂无弹幕匹配（影视条目不在弹弹play库中）'
+                  : '弹幕加载失败，可手动检索',
+            );
           }
         }
       }
