@@ -94,9 +94,9 @@ final settingsModule = createModule(
       ..route(
         '/about/license',
         child: (context, state) => const LicensePage(
-          applicationName: 'Kazumi',
+          applicationName: 'Kura',
           applicationVersion: ApiEndpoints.version,
-          applicationLegalese: 'Kazumi · GNU General Public License v3.0',
+          applicationLegalese: 'Kura · GNU General Public License v3.0 (based on Kazumi)',
         ),
       )
       ..module(historyModule)
