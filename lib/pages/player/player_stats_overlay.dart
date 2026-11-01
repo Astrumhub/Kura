@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:kazumi/pages/player/controller/player_super_resolution.dart';
 import 'package:kazumi/pages/player/player_controller.dart';
 import 'package:media_kit/media_kit.dart';
 
@@ -39,6 +38,7 @@ class _PlayerStatsOverlayState extends State<PlayerStatsOverlay> {
     'video-params/colorlevels',
     'hwdec-current',
     'current-vo',
+    'display-fps',
     'video-bitrate',
     'audio-codec',
     'audio-params/samplerate',
@@ -197,38 +197,28 @@ class _PlayerStatsOverlayState extends State<PlayerStatsOverlay> {
   String get _scaleAlgorithm =>
       widget.controller.playback.superResolutionMode.algorithm;
 
-  /// 超分后的目标分辨率。
-  ///
-  /// Anime4K / ArtCNN 的放大发生在 shader 内部，mpv 的 dwidth/dheight 只反映视口
-  /// 尺寸，看不到中间层，所以这类档位按档位自带的 factor 推算；纯缩放器档则直接
-  /// 读 dwidth/dheight（它没有 shader 中间层，那个值就是真实输出）。
-  String get _scaleTarget {
-    final mode = widget.controller.playback.superResolutionMode;
-    if (mode.kind == SuperResolutionKind.off) {
-      return _resolution('width', 'height');
-    }
-    if (mode.kind == SuperResolutionKind.scaler) {
-      final out = _resolution('dwidth', 'dheight');
-      return out == '—' ? _resolution('width', 'height') : out;
-    }
-    final w = int.tryParse(_raw('width'));
-    final h = int.tryParse(_raw('height'));
-    if (w == null || h == null || w <= 0 || h <= 0) {
-      return _resolution('dwidth', 'dheight');
-    }
-    final f = mode.factor > 0 ? mode.factor : 1;
-    return '${w * f}×${h * f}';
+  /// 渲染尺寸：直接取 mpv 实测的 dwidth/dheight，不做任何倍率推算。
+  String get _renderSize {
+    final out = _resolution('dwidth', 'dheight');
+    return out == '—' ? _resolution('width', 'height') : out;
   }
 
   String get _scaleLine =>
-      '${_resolution('width', 'height')} -> $_scaleTarget · $_scaleAlgorithm';
+      '${_resolution('width', 'height')} -> $_renderSize · $_scaleAlgorithm';
 
-  /// 帧生成算法名。目前只有 AMD amf_frc。
+  /// 显示器刷新率（mpv 实测）。
+  String get _displayFps {
+    final value = double.tryParse(_raw('display-fps'));
+    if (value == null || value <= 0) return '—';
+    return '${value.toStringAsFixed(2)} Hz';
+  }
+
+  /// 帧率：源帧率与输出帧率都是 mpv 实时上报值。
   String get _fpsLine {
     final src = _fps('container-fps');
     final out = _fps('estimated-vf-fps');
     final on = widget.controller.playback.frameGenEnabled;
-    return '$src -> $out · AMF  ${on ? '开' : '关'}';
+    return '$src -> $out · AMF ${on ? '开' : '关'}';
   }
 
   @override
@@ -271,6 +261,7 @@ class _PlayerStatsOverlayState extends State<PlayerStatsOverlay> {
             _section('处理链路', divider, muted, [
               _row('分辨率', _scaleLine, muted),
               _row('帧率', _fpsLine, muted, highlight: scheme.primary),
+              _row('刷新率', _displayFps, muted),
             ]),
             _section('运行状态', divider, muted, [
               _row('解码', _value('hwdec-current').toUpperCase(), muted),
