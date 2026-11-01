@@ -38,7 +38,6 @@ class _PlayerStatsOverlayState extends State<PlayerStatsOverlay> {
     'video-params/colorlevels',
     'hwdec-current',
     'current-vo',
-    'display-fps',
     'video-bitrate',
     'audio-codec',
     'audio-params/samplerate',
@@ -206,13 +205,6 @@ class _PlayerStatsOverlayState extends State<PlayerStatsOverlay> {
   String get _scaleLine =>
       '${_resolution('width', 'height')} -> $_renderSize · $_scaleAlgorithm';
 
-  /// 显示器刷新率（mpv 实测）。
-  String get _displayFps {
-    final value = double.tryParse(_raw('display-fps'));
-    if (value == null || value <= 0) return '—';
-    return '${value.toStringAsFixed(2)} Hz';
-  }
-
   /// 帧率：源帧率与输出帧率都是 mpv 实时上报值。
   String get _fpsLine {
     final src = _fps('container-fps');
@@ -261,7 +253,6 @@ class _PlayerStatsOverlayState extends State<PlayerStatsOverlay> {
             _section('处理链路', divider, muted, [
               _row('分辨率', _scaleLine, muted),
               _row('帧率', _fpsLine, muted, highlight: scheme.primary),
-              _row('刷新率', _displayFps, muted),
             ]),
             _section('运行状态', divider, muted, [
               _row('解码', _value('hwdec-current').toUpperCase(), muted),
